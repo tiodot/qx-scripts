@@ -226,6 +226,10 @@ async function pushToGist(content) {
             body: response.body 
           };
         });
+
+        if (debugMode) {
+          $.log(`Gist更新结果: ${JSON.stringify(updateResult, null, 2)}`);
+        }
         
         if (updateResult.status === 200) {
           if (debugMode) {
