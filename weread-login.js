@@ -221,15 +221,14 @@ async function pushToGist(content) {
           headers: headers,
           body: JSON.stringify(updateData)
         }).then(response => {
+          if (debugMode) {
+            $.log(`Gist更新结果: ${JSON.stringify(response, null, 2)}`);
+          }
           return { 
             status: response.statusCode, 
             body: response.body 
           };
         });
-
-        if (debugMode) {
-          $.log(`Gist更新结果: ${JSON.stringify(updateResult, null, 2)}`);
-        }
         
         if (updateResult.status === 200) {
           if (debugMode) {
@@ -327,10 +326,7 @@ function Env(name, opts) {
 
 		send(opts, method = 'GET') {
 			opts = typeof opts === 'string' ? { url: opts } : opts;
-			let sender = this.get;
-			if (method === 'POST') {
-				sender = this.post;
-			}
+			let sender = this[method.toLowerCase() ?? 'get'];
 
 			const delayPromise = (promise, delay = 1000) => {
 				return Promise.race([
