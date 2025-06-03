@@ -109,18 +109,18 @@ class QXEnv {
 const $ = new QXEnv("微信读书登录信息监控");
 
 // BoxJS 订阅信息
-let boxjsConfig = {
-  id: "WeReadLogin",
-  name: "微信读书登录信息监控",
-  keys: [
-    "wr_github_token",
-    "wr_gist_id",
-    "wr_gist_filename",
-    "wr_gist_description",
-    "wr_enable_gist",
-    "wr_debug_mode",
-  ],
-};
+// let boxjsConfig = {
+//   id: "WeReadLogin",
+//   name: "微信读书登录信息监控",
+//   keys: [
+//     "wr_github_token",
+//     "wr_gist_id",
+//     "wr_gist_filename",
+//     "wr_gist_description",
+//     "wr_enable_gist",
+//     "wr_debug_mode",
+//   ],
+// };
 
 // 从BoxJS获取配置
 let githubToken = $.getVal("wr_github_token") || "";
@@ -247,7 +247,7 @@ async function pushToGist(content) {
     if (!gistId) {
       return await createNewGist(content, headers);
     }
-    
+
     try {
       return await updateGist(content, headers);
     } catch (e) {
