@@ -13,98 +13,148 @@
  * 3. 重新打开微信读书App并登录
  * 4. 脚本将自动捕获登录请求并处理
  */
+/***************** Env 工具类 *****************/
+// 精简的Quantumult X环境工具类 - 来源：https://github.com/chavyleung/scripts/blob/master/Env.js
+// 提供了平台检测、持久化存储、HTTP请求、日志记录等功能
 class QXEnv {
-  constructor(e, t) {
-    if ("undefined" == typeof $task)
+  constructor(name, opts) {
+    if ("undefined" === typeof $task) {
       throw new Error("请在Quantumult X环境中运行此脚本");
-    (this.name = e),
-      (this.opts = t || {}),
-      (this.startTime = Date.now()),
-      this.log(`🔔${this.name}, 开始!`);
+    }
+    this.name = name;
+    this.opts = opts || {};
+    this.startTime = Date.now();
+    this.log(`🔔开始!`);
   }
-  done(e = {}) {
-    const t = Date.now(),
-      o = (t - this.startTime) / 1e3;
-    this.log("", `🔔${this.name}, 结束! 🕛 ${o} 秒\n`), $done(e);
+  done(val = {}) {
+    const endTime = Date.now();
+    const costTime = (endTime - this.startTime) / 1000;
+    this.log("", `🔔结束! 🕛 ${costTime} 秒\n`);
+    $done(val);
   }
-  log(...e) {
-    console.log(`[${this.name}]`, ...e);
+
+  log(...args) {
+    console.log(`[${this.name}]`, ...args);
   }
-  error(...e) {
-    this.log(`❗️[${this.name}][错误]`, ...e);
+
+  error(...args) {
+    console.log(`❗️[${this.name}][错误]`, ...args);
   }
-  msg(e = "", t = "", o = "", r = {}) {
-    "string" == typeof r
-      ? (r = { "open-url": r })
-      : (r && "object" == typeof r) || (r = {});
-    const s = {};
-    let n = r["open-url"] || r.url || r.openUrl || $open;
-    n && Object.assign(s, { "open-url": n });
-    let a = r.mediaUrl || r["media-url"] || $media;
-    a && Object.assign(s, { "media-url": a });
-    let i = r["update-pasteboard"] || r.updatePasteboard || $copy;
-    i && Object.assign(s, { "update-pasteboard": i }),
-      $notification.post(e, subt, o, s);
+
+  msg(title = "", subTitle = "", desc = "", opts = {}) {
+    if (typeof opts === "string") {
+      opts = { "open-url": opts };
+    } else if (!opts || typeof opts !== "object") {
+      opts = {};
+    }
+    const options = {};
+    const { $open, $copy, $media } = opts;
+
+    let openUrl = opts["open-url"] || opts.url || opts.openUrl || $open;
+    if (openUrl) Object.assign(options, { "open-url": openUrl });
+
+    let mediaUrl = opts.mediaUrl || opts["media-url"] || $media;
+    if (mediaUrl) Object.assign(options, { "media-url": mediaUrl });
+
+    let copy = opts["update-pasteboard"] || opts.updatePasteboard || $copy;
+    if (copy) Object.assign(options, { "update-pasteboard": copy });
+
+    $notify(title || this.name, subTitle, desc, options);
   }
-  getVal(e) {
-    return $prefs.valueForKey(e);
+
+  getVal(key) {
+    return $prefs.valueForKey(key);
   }
-  setVal(e, t) {
-    return $prefs.setValueForKey(t, e);
+  setVal(key, value) {
+    return $prefs.setValueForKey(value, key);
   }
-  queryStr(e) {
-    return e && "object" == typeof e
-      ? Object.keys(e)
-          .map((t) => `${t}=${encodeURIComponent(e[t])}`)
-          .join("&")
-      : "";
+  /**
+   *
+   * @param {Object} options
+   * @returns {String} 将 Object 对象 转换成 queryStr: key=val&name=senku
+   */
+  queryStr(options) {
+    if (!options || typeof options !== "object") {
+      return "";
+    }
+    return Object.keys(options)
+      .map((key) => `${key}=${encodeURIComponent(options[key])}`)
+      .join("&");
   }
-  formatHeaders(e) {
-    e &&
-      e.headers &&
-      (delete e.headers["Content-Type"],
-      delete e.headers["Content-Length"],
-      delete e.headers["content-type"],
-      delete e.headers["content-length"]),
-      void 0 === e.followRedirect ||
-        e.followRedirect ||
-        (e.opts ? (e.opts.redirection = !1) : (e.opts = { redirection: !1 })),
-      e.params && (e.url += "?" + this.queryStr(e.params));
+  formatHeaders(request) {
+    if (request && request.headers) {
+      delete request.headers["Content-Type"];
+      delete request.headers["Content-Length"];
+
+      delete request.headers["content-type"];
+      delete request.headers["content-length"];
+    }
+    if (
+      typeof request.followRedirect !== "undefined" &&
+      !request["followRedirect"]
+    ) {
+      if (request.opts) {
+        request["opts"]["redirection"] = false;
+      } else {
+        request.opts = { redirection: false };
+      }
+    }
+
+    if (request.params) {
+      request.url += "?" + this.queryStr(request.params);
+    }
   }
-  get(e) {
-    return this.formatHeaders(e), this.send(e);
+  get(request) {
+    this.formatHeaders(request);
+    return this.send(request);
   }
-  post(e) {
-    return (
-      this.formatHeaders(e),
-      e.method || (e.method = "POST"),
-      e.body &&
-        e.headers &&
-        !e.headers["Content-Type"] &&
-        !e.headers["content-type"] &&
-        (e.headers["content-type"] = "application/x-www-form-urlencoded"),
-      this.send(e)
-    );
+
+  post(request) {
+    this.formatHeaders(request);
+
+    if (!request.method) {
+      request.method = "POST";
+    }
+
+    // 如果指定了请求体, 但没指定 `Content-Type`、`content-type`, 则自动生成。
+    if (
+      request.body &&
+      request.headers &&
+      !request.headers["Content-Type"] &&
+      !request.headers["content-type"]
+    ) {
+      // HTTP/1、HTTP/2 都支持小写 headers
+      request.headers["content-type"] = "application/x-www-form-urlencoded";
+    }
+
+    return this.send(request);
   }
-  patch(e) {
-    return (e.method = "PATCH"), this.post(e);
+  patch(request) {
+    request.method = "PATCH";
+    return this.post(request);
   }
-  send(e) {
-    const t = (e, t = 1e3) =>
-        Promise.race([
-          e,
-          new Promise((e, o) => {
-            setTimeout(() => {
-              o(new Error("请求超时"));
-            }, t);
-          }),
-        ]),
-      o = $task.fetch(e).catch((e) => {
-        throw (this.log(`请求失败: ${e}`), e);
-      });
-    return this.opts.timeout ? t(o, this.opts.timeout) : o;
+
+  send(request) {
+    const delayPromise = (promise, delay = 1000) => {
+      return Promise.race([
+        promise,
+        new Promise((resolve, reject) => {
+          setTimeout(() => {
+            reject(new Error("请求超时"));
+          }, delay);
+        }),
+      ]);
+    };
+
+    const call = $task.fetch(request).catch((err) => {
+      this.log(`请求失败: ${err}`);
+      throw err;
+    });
+
+    return this.opts.timeout ? delayPromise(call, this.opts.timeout) : call;
   }
 }
+
 // 创建Env环境实例
 const $ = new QXEnv("微信读书登录信息监控");
 
@@ -142,6 +192,7 @@ processRequest($request)
     $.error(`处理请求时出错: ${e}`);
   })
   .finally(() => {
+    $.log("脚本执行完毕");
     $.done();
   });
 

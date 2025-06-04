@@ -34,6 +34,7 @@ class QXEnv {
       opts = {};
     }
     const options = {};
+    const { $open, $copy, $media } = opts;
 
     let openUrl =
       opts["open-url"] || opts.url || opts.openUrl || $open;
@@ -46,7 +47,7 @@ class QXEnv {
       opts["update-pasteboard"] || opts.updatePasteboard || $copy;
     if (copy) Object.assign(options, { "update-pasteboard": copy });
 
-    $notification.post(title, subt, desc, options);
+    $notify(title || this.name, subTitle, desc, options);
   }
 
   getVal(key) {
