@@ -302,12 +302,12 @@ async function pushToGist(content) {
     try {
       return await updateGist(content, headers);
     } catch (e) {
-      $.error(`更新Gist时出错: ${e}`);
+      $.error(`更新Gist时出错: ${e.message || e}`);
       // 如果更新失败，尝试创建新的Gist
       return await createNewGist(content, headers);
     }
   } catch (error) {
-    $.error(`Gist操作出错: ${error}`);
+    $.error(`Gist操作出错: ${error.message || error}`);
     return { success: false, message: `操作失败: ${error.message || error}` };
   }
 }
@@ -341,12 +341,7 @@ async function updateGist(content, headers) {
       $.log(`Gist更新成功: ${gistId}, 文件: ${gistFilename}`);
     }
 
-    // 如果之前没有存储过gistId，则现在存储
-    if (!gistId) {
-      $.setVal("wr_gist_id", targetGistId);
-    }
-
-    return { success: true, message: `Gist已更新: ${targetGistId}` };
+    return { success: true, message: `Gist已更新: ${gistId}` };
   } else {
     $.log(`Gist更新失败: ${JSON.stringify(updateResult)}`);
     return { success: false, message: `Gist更新失败: ${updateResult.status}` };
@@ -390,6 +385,7 @@ async function createNewGist(content, headers) {
         // 保存新创建的gistId到BoxJS
         if (newGistId) {
           $.setVal("wr_gist_id", newGistId);
+          gistId = newGistId;
           if (debugMode) {
             $.log(`新Gist已创建: ${newGistId}, 文件: ${gistFilename}`);
           }
