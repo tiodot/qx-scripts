@@ -229,13 +229,15 @@ async function processRequest(request) {
     }
 
     // 推送到GitHub Gist
-    if (enableGistUpload && githubToken) {
+    if (enableGistUpload && githubToken && vid) {
       const gistResult = await pushToGist(gist_body);
       if (gistResult.success) {
         $.msg(NOTIFY_TITLE, NOTIFY_GIST_SUCCESS, gistResult.message || "");
       } else {
         $.msg(NOTIFY_TITLE, NOTIFY_GIST_ERROR, gistResult.message || "");
       }
+    } else {
+      $.log("未启用Gist上传或缺少必要信息，跳过Gist上传");
     }
 
     return request;
